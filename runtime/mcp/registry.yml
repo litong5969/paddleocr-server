@@ -1,0 +1,38 @@
+version: v2
+agents:
+  - id: DEL
+    role: Delivery & Coordination
+    prefixes: [DEL-PM]
+    tools: [fs, docs, status, summary-validator]
+  - id: NPS
+    role: Narrative & Prompt
+    prefixes: [NPS-Narrative, NPS-Prompt]
+    tools: [docs-read]
+  - id: BEP
+    role: Backend & Platform
+    prefixes: [BEP-Platform, BEP-API]
+    tools: [server-fs, tests, shell-read]
+  - id: DAT
+    role: Data & Intelligence
+    prefixes: [DAT-Schema, DAT-Analytics]
+    tools: [prisma-fs, scripts, tests]
+  - id: FEX
+    role: Frontend Experience
+    prefixes: [FEX-Design, FEX-Interaction, FEX-Implement]
+    tools: [web-fs, tests]
+  - id: OPQ
+    role: Ops & Quality
+    prefixes: [OPQ-QA, OPQ-Docs, OPQ-Legal, OPQ-Infra, OPQ-Growth]
+    tools: [docs, qa-scripts, tests, logs]
+  - id: SUP
+    role: Support & Assistant
+    prefixes: [SUP-Assistant]
+    tools: [docs-read]
+  - id: SA
+    role: Strategic Advisor
+    prefixes: [SA]
+    tools: [docs-read]
+
+routing:
+  default: DEL
+  strategy: prefix-first

@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="540" viewBox="0 0 960 540">
+  <rect width="100%" height="100%" fill="#f6f8fa"/>
+  <text x="32" y="48" font-family="Arial, Helvetica, sans-serif" font-size="20" fill="#24292e">PaddleOCR Server — Web UI（示意图）</text>
+  <rect x="32" y="72" width="896" height="64" rx="8" fill="#fff" stroke="#d0d7de"/>
+  <text x="48" y="112" font-family="Arial, Helvetica, sans-serif" font-size="14" fill="#57606a">选择图片（支持多张）  |  识别  |  复制文本  |  API 文档</text>
+  <rect x="32" y="152" width="896" height="120" rx="8" fill="#fff" stroke="#d0d7de" stroke-dasharray="8 6"/>
+  <text x="48" y="216" font-family="Arial, Helvetica, sans-serif" font-size="14" fill="#57606a">拖拽图片到此处</text>
+  <rect x="32" y="288" width="896" height="200" rx="8" fill="#fff" stroke="#d0d7de"/>
+  <text x="48" y="316" font-family="Arial, Helvetica, sans-serif" font-size="16" fill="#24292e">识别结果</text>
+  <rect x="48" y="332" width="860" height="56" rx="4" fill="#f2f8ff" stroke="#d0d7de"/>
+  <text x="60" y="364" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#24292e">合并后的文本...</text>
+  <rect x="48" y="396" width="860" height="76" rx="4" fill="#fff" stroke="#d0d7de"/>
+  <text x="60" y="420" font-family="Arial, Helvetica, sans-serif" font-size="12" fill="#57606a">#  文本  置信度</text>
+</svg>

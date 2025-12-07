@@ -1,0 +1,9 @@
+{
+  "defaultAgent": "DEL",
+  "routing": "prefix-first",
+  "sandboxPreset": "standard-isolation",
+  "registryPath": "../../mcp/registry.yml",
+  "policiesPath": "../../mcp/policies.yml",
+  "context7Config": "../../context7/providers.json",
+  "notes": "Load this config in Codex CLI to bootstrap agents and MCP runtime for a new project."
+}

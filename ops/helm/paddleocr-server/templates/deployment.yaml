@@ -1,0 +1,63 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "paddleocr-server.fullname" . }}
+  labels:
+    {{- include "paddleocr-server.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "paddleocr-server.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "paddleocr-server.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            {{- range $k, $v := .Values.env }}
+            - name: {{ $k }}
+              value: "{{ $v }}"
+            {{- end }}
+          ports:
+            - containerPort: 5000
+              name: http
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          volumeMounts:
+            - name: ocr-cache
+              mountPath: /root/.paddleocr
+          {{- if .Values.useGpu }}
+          resources:
+            limits:
+              nvidia.com/gpu: 1
+          env:
+            - name: OCR_USE_GPU
+              value: "true"
+            - name: NVIDIA_VISIBLE_DEVICES
+              value: all
+            - name: NVIDIA_DRIVER_CAPABILITIES
+              value: compute,utility
+          {{- end }}
+      volumes:
+        - name: ocr-cache
+          {{- if .Values.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "paddleocr-server.fullname" . }}-cache
+          {{- else }}
+          emptyDir: {}
+          {{- end }}

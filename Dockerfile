@@ -1,4 +1,5 @@
-FROM paddlepaddle/paddle:3.2.2-gpu-cuda12.6-cudnn9.5
+ARG PADDLE_IMAGE_TAG=3.2.2-gpu-cuda12.6-cudnn9.5
+FROM paddlepaddle/paddle:${PADDLE_IMAGE_TAG}
 
 WORKDIR /app
 
@@ -12,7 +13,8 @@ COPY requirements.txt .
 RUN pip3 install --no-cache-dir -r requirements.txt
 
 COPY server.py .
+COPY web ./web
 
 EXPOSE 5000
 
-CMD ["uvicorn", "server:app", "--host", "0.0.0.0", "--port", "5000"]
+CMD ["python", "server.py"]

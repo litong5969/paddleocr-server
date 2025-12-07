@@ -1,0 +1,11 @@
+{
+  "version": "1.0",
+  "providers": [
+    {
+      "id": "context7-default",
+      "type": "search",
+      "description": "Default public knowledge provider for docs/examples/reference",
+      "rateLimit": "standard"
+    }
+  ]
+}

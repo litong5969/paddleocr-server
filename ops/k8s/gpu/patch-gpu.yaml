@@ -1,0 +1,20 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: paddleocr-server
+spec:
+  template:
+    spec:
+      containers:
+        - name: paddleocr-server
+          env:
+            - name: OCR_USE_GPU
+              value: "true"
+            - name: NVIDIA_VISIBLE_DEVICES
+              value: all
+            - name: NVIDIA_DRIVER_CAPABILITIES
+              value: compute,utility
+          resources:
+            limits:
+              nvidia.com/gpu: 1
+

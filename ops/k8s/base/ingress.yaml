@@ -1,0 +1,25 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: paddleocr-server
+  annotations:
+    kubernetes.io/ingress.class: nginx
+spec:
+  rules:
+    - host: ocr.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: paddleocr-server
+                port:
+                  number: 80
+          - path: /ocr
+            pathType: Prefix
+            backend:
+              service:
+                name: paddleocr-server
+                port:
+                  number: 80

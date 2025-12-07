@@ -1,0 +1,38 @@
+{
+  "session_id": "2025-12-07-session-001",
+  "mode": "lightweight",
+  "phase": "maintenance",
+  "status": "active",
+  "governance": [
+    "Architecture",
+    "Component",
+    "AI Coding",
+    "API Schema",
+    "Testing",
+    "Observability",
+    "Reliability",
+    "Performance",
+    "Security",
+    "SRE",
+    "DX"
+  ],
+  "backlog": [
+    { "id": "MVP-001", "title": "Confirm /ocr API and model cache mount strategy; GPU/CPU run path", "status": "done", "priority": "P0" },
+    { "id": "PERF-001", "title": "Cold start optimization and batch/large image performance evaluation", "status": "in_progress", "priority": "P1" },
+    { "id": "OBS-001", "title": "Minimal monitoring/logging and readiness/liveness probes", "status": "done", "priority": "P1" },
+    { "id": "DEP-001", "title": "K8s manifests, Helm chart, and CI pipeline for container image publishing", "status": "done", "priority": "P1" },
+    { "id": "GUI-001", "title": "Lightweight Web GUI MVP integrated at /ui within same container", "status": "done", "priority": "P0" },
+    { "id": "GUI-002", "title": "Export button (.txt) and README real screenshot process (SOP)", "status": "done", "priority": "P2" },
+    { "id": "GUI-003", "title": "Meta panel: show /meta and /readyz status in UI", "status": "done", "priority": "P2" },
+    { "id": "PROXY-001", "title": "Ingress and Nginx path routing examples (same port, same service)", "status": "done", "priority": "P2" }
+  ],
+  "metrics": {
+    "summary_validator": "pass",
+    "team_integrity_check": "pass"
+  },
+  "artifacts": {
+    "summary": "docs/summary/pm_sessions/2025-12-07-session-001.md",
+    "pm_log": "docs/PM_LOG.md",
+    "kanban": "docs/KANBAN.md"
+  }
+}

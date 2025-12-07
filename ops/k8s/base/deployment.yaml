@@ -1,0 +1,69 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: paddleocr-server
+  labels:
+    app: paddleocr-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: paddleocr-server
+  template:
+    metadata:
+      labels:
+        app: paddleocr-server
+    spec:
+      containers:
+        - name: paddleocr-server
+          image: ghcr.io/OWNER/REPO:latest # override via kustomize or helm
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: APP_HOST
+              value: "0.0.0.0"
+            - name: APP_PORT
+              value: "5000"
+            - name: OCR_LANG
+              value: "ch"
+            - name: OCR_VERSION
+              value: "PP-OCRv4"
+            - name: OCR_USE_ANGLE_CLS
+              value: "true"
+            - name: OCR_USE_GPU
+              value: "false" # CPU base; use GPU overlay to enable
+            - name: PADDLEOCR_HOME
+              value: "/root/.paddleocr"
+            - name: METRICS_ENABLED
+              value: "true"
+            - name: OCR_WARMUP_ON_START
+              value: "true"
+            - name: OCR_WARMUP_TIMEOUT_SEC
+              value: "20"
+            - name: OCR_BATCH_MAX_FILES
+              value: "8"
+            - name: MAX_IMAGE_SIZE_MB
+              value: "10"
+            - name: MAX_BATCH_TOTAL_MB
+              value: "20"
+          ports:
+            - name: http
+              containerPort: 5000
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          volumeMounts:
+            - name: ocr-cache
+              mountPath: /root/.paddleocr
+      volumes:
+        - name: ocr-cache
+          emptyDir: {}
+

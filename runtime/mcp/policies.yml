@@ -1,0 +1,35 @@
+version: v2
+sandbox:
+  modes:
+    - id: standard-isolation
+      fs: workspace-write
+      network: enabled
+      approval: on-request
+    - id: danger-full-access
+      fs: danger-full-access
+      network: enabled
+      approval: on-request
+approvals:
+  high_risk:
+    - description: destructive commands (rm -rf, reset --hard)
+    - description: production database or secrets access
+  hoep_required: true
+permissions:
+  read_write_paths:
+    - server/
+    - web/
+    - docs/
+    - scripts/
+  read_only_paths:
+    - kernel/
+    - logs/
+tools:
+  allow:
+    - shell_command
+    - tests
+    - git_status
+    - fs
+  deny:
+    - network_upload_secrets
+notes: |
+  本策略为可移植模板，保持权限模型、工具路由与审批流程，可根据新项目适度收敛或放宽。
