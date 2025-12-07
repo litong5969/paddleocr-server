@@ -56,6 +56,23 @@
 - 示例：浏览器打开 `http://localhost:${HOST_PORT:-5215}/` 即可使用
 - 截图：docs/summary/ui-screenshot.png（实拍）
 
+### 整屏截图 → 确认 → 直接进入 OCR
+- 点击 GUI 顶部的“截图”：
+  - 在 HTTPS 或 localhost 下，浏览器会弹出系统选择框，建议选择“整个屏幕”；预览层点击“确认识别”后，会抓取当前帧并直接调用 `POST /ocr`，结果显示在右侧。
+  - 在内网 HTTP 下，部分浏览器默认不允许屏幕捕获。页面将尝试启动，如被拒绝，请启用 HTTPS（下一节）或在浏览器中将该内网地址加入“Treat as secure”白名单。
+
+### 一键启用 HTTPS（同端口 5215）
+1. 生成自签证书（CN 可换为你的内网 IP/域名）：
+   ```bash
+   bash scripts/dev/gen_self_signed.sh 192.168.31.3
+   ```
+2. 启用 compose 覆盖并启动：
+   ```bash
+   cp docker-compose.override.example.yml docker-compose.override.yml
+   docker compose --compatibility up -d --build
+   ```
+3. 访问并信任证书提示：`https://192.168.31.3:5215/ui/`，再点击“截图”体验整屏捕获。
+
 提示：服务端在响应头返回 `X-Process-Time-ms`，可用于估算单次请求服务端处理耗时；`/meta` 可查看当前语言/模型/GPU 与缓存目录配置。
 - 请求（表单上传）：
   ```bash

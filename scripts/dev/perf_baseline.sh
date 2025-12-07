@@ -1,53 +1,57 @@
 #!/usr/bin/env bash
 set -euo pipefail
-ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
-cd "$ROOT"
 
-URL="${URL:-http://localhost:${HOST_PORT:-5215}/ocr}"
-IMG="${IMG:-$ROOT/test.jpg}"
-REQS="${REQS:-16}"
-CONC_LIST="${CONC_LIST:-1 4 8}"
-OUT="${OUT:-$ROOT/docs/summary/bench-$(date +%F).md}"
+URL="${URL:-http://localhost:5215/ocr}"
+IMG="${IMG:-test.jpg}"
+REQS=${REQS:-32}
+CONC_LIST=( ${CONC_LIST:-1 4 8} )
+OUTDIR="docs/summary"
+mkdir -p "$OUTDIR"
+STAMP=$(date +%F)
+OUT="$OUTDIR/bench-$STAMP.md"
 
-echo "[perf] url=$URL img=$IMG reqs=$REQS conc=($CONC_LIST) out=$OUT"
-mkdir -p "$(dirname "$OUT")"
+echo "# Bench $STAMP" > "$OUT"
+echo "URL=$URL IMG=$IMG REQS=$REQS CONC_LIST=${CONC_LIST[*]}" >> "$OUT"
 
-run_python() {
-  python3 - <<PY
-import sys
-print('ok')
-PY
-}
-
-bench_cmd() {
-  local c=$1
-  python3 scripts/bench/bench_ocr.py --url "$URL" --image "$IMG" --concurrency "$c" --requests "$REQS"
-}
-
-if run_python >/dev/null 2>&1; then
-  echo "[perf] using host python3"
-  {
-    echo "# OCR Bench — $(date +%F)"
-    echo
-    for c in $CONC_LIST; do
-      bench_cmd "$c"
-    done
-  } | tee -a "$OUT"
-elif command -v docker >/dev/null 2>&1; then
-  echo "[perf] using docker python:3.11"
-  CIMG="$IMG"
-  if [[ "$CIMG" == "$ROOT"* ]]; then CIMG="/w${CIMG#$ROOT}"; fi
-  URL_IN_CONTAINER="$URL"
-  if [[ "$URL_IN_CONTAINER" == http://localhost:* || "$URL_IN_CONTAINER" == http://127.0.0.1:* ]]; then
-    URL_IN_CONTAINER="http://paddleocr-server:5000/ocr"
-  fi
-  NET="${COMPOSE_PROJECT_NAME:-$(basename "$ROOT")}_default"
-  for c in $CONC_LIST; do
-    docker run --rm --network "$NET" -v "$ROOT":"/w" -w /w python:3.11 bash -lc "pip -q install httpx && python scripts/bench/bench_ocr.py --url '$URL_IN_CONTAINER' --image '$CIMG' --concurrency '$c' --requests '$REQS'" | tee -a "$OUT"
-  done
-else
-  echo "[perf] no python3 or docker available; abort" >&2
-  exit 2
+if [ ! -f "$IMG" ]; then
+  echo "[perf] image not found: $IMG" >&2
+  exit 1
 fi
 
-echo "[perf] results appended to $OUT"
+post_once() {
+  local id="$1"
+  local start end ms code
+  start=$(date +%s%3N)
+  code=$(curl -s -o /dev/null -w "%{http_code}" -F "file=@$IMG" "$URL" || echo 000)
+  end=$(date +%s%3N)
+  ms=$(( end - start ))
+  echo "$ms $code"
+}
+
+run_case() {
+  local conc=$1
+  echo "\n## Concurrency $conc" | tee -a "$OUT"
+  echo "```" >> "$OUT"
+  seq 1 "$REQS" | xargs -n1 -P "$conc" -I{} bash -c 'post_once {}' post_once | tee /tmp/bench_raw.txt
+  echo "```" >> "$OUT"
+  awk '{print $1}' /tmp/bench_raw.txt | sort -n > /tmp/bench_ms.txt
+  local count=$(wc -l < /tmp/bench_ms.txt)
+  local p50_idx=$(( (count+1)*50/100 ))
+  local p95_idx=$(( (count+1)*95/100 ))
+  local p99_idx=$(( (count+1)*99/100 ))
+  local p50=$(sed -n "${p50_idx}p" /tmp/bench_ms.txt)
+  local p95=$(sed -n "${p95_idx}p" /tmp/bench_ms.txt)
+  local p99=$(sed -n "${p99_idx}p" /tmp/bench_ms.txt)
+  local avg=$(awk '{s+=$1} END{if(NR>0) printf "%.2f", s/NR; else print 0}' /tmp/bench_ms.txt)
+  local ok=$(awk '$2==200{c++} END{print c+0}' /tmp/bench_raw.txt)
+  local err=$(awk '$2!=200{c++} END{print c+0}' /tmp/bench_raw.txt)
+  echo "p50=${p50}ms p95=${p95}ms p99=${p99}ms avg=${avg}ms ok=${ok} err=${err}" | tee -a "$OUT"
+}
+
+export -f post_once
+for c in "${CONC_LIST[@]}"; do
+  run_case "$c"
+done
+
+echo "[perf] summary written to $OUT"
+
