@@ -4,7 +4,7 @@ import tempfile
 from typing import List, Optional
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, HTTPException, Request
 from fastapi.responses import JSONResponse, Response, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -61,6 +61,13 @@ metrics_enabled = _bool_env("METRICS_ENABLED", True)
 warmup_on_start = _bool_env("OCR_WARMUP_ON_START", True)
 warmup_timeout_sec = int(os.getenv("OCR_WARMUP_TIMEOUT_SEC", "20"))
 batch_max_files = int(os.getenv("OCR_BATCH_MAX_FILES", "8"))
+max_image_size_mb = int(os.getenv("MAX_IMAGE_SIZE_MB", "10"))
+max_batch_total_mb = int(os.getenv("MAX_BATCH_TOTAL_MB", "20"))
+
+# Security / QoS
+auth_token = os.getenv("AUTH_TOKEN")
+rate_limit_per_min = int(os.getenv("RATE_LIMIT_PER_MINUTE", "0"))
+_RATE_STATE = {"window": 0, "counts": {}}  # ip -> count
 max_image_size_mb = int(os.getenv("MAX_IMAGE_SIZE_MB", "10"))
 max_batch_total_mb = int(os.getenv("MAX_BATCH_TOTAL_MB", "20"))
 
@@ -127,6 +134,46 @@ class OCRResponse(BaseModel):
 
 
 @app.middleware("http")
+async def _auth_rl_middleware(request: Request, call_next):  # type: ignore
+    path = request.url.path or "/"
+    # Allowlisted paths for auth and rate-limit
+    auth_exempt = {"/", "/ui", "/healthz", "/readyz", "/docs", "/openapi.json", "/redoc"}
+    rl_paths = {"/ocr", "/ocr/batch"}
+
+    # Simple token auth (protect OCR + meta/metrics by default)
+    if auth_token and path not in auth_exempt:
+        # Only enforce on OCR/meta/metrics
+        if path in rl_paths or path in {"/meta", "/metrics"}:
+            tok = request.headers.get("authorization") or request.headers.get("Authorization") or request.headers.get("x-api-token") or request.headers.get("X-API-Token")
+            ok = False
+            if tok:
+                parts = tok.split()
+                if len(parts) == 2 and parts[0].lower() == "bearer":
+                    ok = (parts[1] == auth_token)
+                else:
+                    ok = (tok == auth_token)
+            if not ok:
+                return JSONResponse({"detail": "Unauthorized"}, status_code=401)
+
+    # Rate-limit OCR endpoints by IP
+    if rate_limit_per_min > 0 and path in rl_paths:
+        try:
+            ip = request.client.host if request.client else "-"
+            now_min = int(time.time() // 60)
+            if _RATE_STATE["window"] != now_min:
+                _RATE_STATE["window"] = now_min
+                _RATE_STATE["counts"] = {}
+            c = _RATE_STATE["counts"].get(ip, 0) + 1
+            if c > rate_limit_per_min:
+                return JSONResponse({"detail": "Too Many Requests"}, status_code=429)
+            _RATE_STATE["counts"][ip] = c
+        except Exception:
+            pass
+
+    return await call_next(request)
+
+
+@app.middleware("http")
 async def _timing_middleware(request, call_next):  # type: ignore
     start = time.perf_counter()
     response = await call_next(request)
@@ -175,6 +222,8 @@ async def meta():
         "batch_max_files": batch_max_files,
         "max_image_size_mb": max_image_size_mb,
         "max_batch_total_mb": max_batch_total_mb,
+        "auth_enabled": bool(auth_token),
+        "rate_limit_per_min": rate_limit_per_min,
     }
 
 

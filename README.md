@@ -1,5 +1,7 @@
 # PaddleOCR Server 使用说明
 
+![Web GUI 实拍](docs/summary/ui-screenshot.png)
+
 ## 镜像获取与运行
 - 推荐挂载模型缓存目录，避免重复下载：`-v /mnt/user/appdata/paddleocr/models:/root/.paddleocr`
 - 环境变量：复制 `.env.example` 为 `.env`，容器内端口固定 5000，默认宿主端口 `5215`（GUI 与 API 共用），默认启用 GPU；按需调整 `HOST_PORT`、`OCR_USE_GPU`、`OCR_LANG`、`PADDLE_IMAGE_TAG` 等（详见 `docs/ENVIRONMENT_VARIABLES.md`）。
@@ -36,6 +38,13 @@
   - `GET /meta` — 运行时元信息（语言、版本、GPU/缓存目录）
   - `GET /metrics` — Prometheus 指标（默认开启，可通过 `METRICS_ENABLED=false` 关闭）
 
+### 简单认证与限流（可选）
+- 认证：设置 `AUTH_TOKEN` 后，访问 `/ocr` `/ocr/batch` `/meta` `/metrics` 需携带令牌
+  - Header 示例：`Authorization: Bearer <token>` 或 `X-API-Token: <token>`
+- 限流：设置 `RATE_LIMIT_PER_MINUTE>0` 后，对每个 IP 的 OCR 请求进行每分钟限速（仅 `/ocr` `/ocr/batch`）
+  - 超限返回 `429 Too Many Requests`
+  - `/healthz` `/readyz` `/ui` 不受认证与限流影响
+
 ## 轻量 Web GUI（内置于同一镜像）
 - 访问路径：`/ui`（根路径 `/` 已重定向到 `/ui`）
 - 功能：
@@ -46,6 +55,8 @@
 - 定位：单页原生 HTML/JS，不引入重量前端框架，不增加镜像体积
 - 示例：浏览器打开 `http://localhost:${HOST_PORT:-5215}/` 即可使用
 - 截图：docs/summary/ui-screenshot.png（实拍）
+
+提示：服务端在响应头返回 `X-Process-Time-ms`，可用于估算单次请求服务端处理耗时；`/meta` 可查看当前语言/模型/GPU 与缓存目录配置。
 - 请求（表单上传）：
   ```bash
   curl -X POST http://localhost:5215/ocr \
@@ -72,6 +83,12 @@
 ## 性能与批处理
 - 冷启动优化：默认在进程启动后进行一次轻量 warmup（10x10 黑图），可通过 `OCR_WARMUP_ON_START=false` 关闭；超时控制 `OCR_WARMUP_TIMEOUT_SEC`（默认 20）。
 - 批处理：`POST /ocr/batch` 接收多文件字段名 `files`，最多 `OCR_BATCH_MAX_FILES`（默认 8），返回每个文件的 `filename/text/lines`。
+
+### 最近一次基准（摘要）
+- 并发 1：ok=16 err=0 p50≈1.19s p95≈1.28s avg≈1.20s
+- 并发 4：ok=16 err=0 p50≈3.92s p95≈4.05s avg≈3.74s
+- 并发 8：ok=16 err=0 p50≈6.99s p95≈9.19s avg≈6.90s
+- 详情：`docs/summary/bench-2025-12-08.md`
 
 ## 上传限制与安全
 - 单文件大小：`MAX_IMAGE_SIZE_MB`（默认 10MB），超过返回 413。

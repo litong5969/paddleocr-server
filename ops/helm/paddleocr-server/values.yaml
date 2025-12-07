@@ -23,6 +23,8 @@ env:
   OCR_BATCH_MAX_FILES: "8"
   MAX_IMAGE_SIZE_MB: "10"
   MAX_BATCH_TOTAL_MB: "20"
+  AUTH_TOKEN: ""
+  RATE_LIMIT_PER_MINUTE: "0"
 
 resources: {}
 

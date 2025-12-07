@@ -17,6 +17,8 @@
 | `OCR_BATCH_MAX_FILES` | `8` | 批量接口 `/ocr/batch` 单次最大文件数 |
 | `MAX_IMAGE_SIZE_MB` | `10` | 单张图片最大体积（MB） |
 | `MAX_BATCH_TOTAL_MB` | `20` | 批量请求总体积上限（MB） |
+| `AUTH_TOKEN` | （空） | 简单 Bearer 令牌；设置后需携带 `Authorization: Bearer <token>` 或 `X-API-Token` 访问 `/ocr` `/ocr/batch` `/meta` `/metrics` |
+| `RATE_LIMIT_PER_MINUTE` | `0` | 每分钟每 IP 的 OCR 请求限速（0 表示关闭，仅作用于 `/ocr` `/ocr/batch`） |
 
 所有环境文件字段保持与 `.env.template` 对齐：`.env` / `.env.dev` / `.env.example` 均包含上述键，未新增额外字段。
 开发场景使用 `.env.dev` 将 `HOST_PORT` 设置为 `5214`（内部端口仍为 5000）。

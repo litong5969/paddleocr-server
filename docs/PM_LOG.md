@@ -73,3 +73,4 @@
   - SOP：`docs/sop/LOCAL_GATES.md`，明确“CI Gate 仅保护，事实源为本地命令”。
 
 - 2025-12-08: GUI 截图：已将 `http://192.168.31.3:5215/ui/` 的界面实拍保存至 `docs/summary/ui-screenshot.png`，README 已更新标注为“实拍”。
+- 2025-12-08: Bench 概览：补充 `docs/summary/bench-2025-12-08.md` 顶部小结（并发 1/4/8 的 ok/err 与分位数），便于后续横向对比。
