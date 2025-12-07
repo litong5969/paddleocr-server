@@ -27,6 +27,7 @@
     <button id="run" class="btn">识别</button>
     <button id="copy" class="btn secondary">复制文本</button>
     <button id="export" class="btn secondary">导出文本</button>
+    <button id="shot" class="btn secondary">截图</button>
     <a class="btn secondary" href="/docs" target="_blank">API 文档</a>
   </div>
   <div id="drop" class="dropzone">拖拽图片到此处（可多张），或点击上方选择文件</div>
@@ -287,3 +288,44 @@
   </script>
 </body>
 </html>
+    const shotBtn = $('#shot');
+    const downloadBlob = (blob, filename) => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 0);
+    };
+
+    // 截图：使用浏览器屏幕捕获（需用户授权），选中“此标签页”后生成图片
+    shotBtn.addEventListener('click', async () => {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+        setState('此浏览器不支持屏幕捕获，请使用系统截图', false);
+        return;
+      }
+      try {
+        const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+        const track = stream.getVideoTracks()[0];
+        // 使用 <video> 绘制当前帧到 canvas 以导出 PNG
+        const v = document.createElement('video');
+        v.srcObject = stream;
+        await v.play();
+        // 等待元数据以获取分辨率
+        await new Promise(r => v.onloadedmetadata = r);
+        const cw = v.videoWidth, ch = v.videoHeight;
+        const canvas = document.createElement('canvas');
+        canvas.width = cw; canvas.height = ch;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(v, 0, 0, cw, ch);
+        // 结束捕获
+        track.stop();
+        v.pause();
+        const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
+        downloadBlob(blob, `paddleocr-ui-${Date.now()}.png`);
+        setState('已保存截图到下载');
+      } catch (e) {
+        setState('截图取消或失败：' + (e && e.message ? e.message : e), false);
+      }
+    });

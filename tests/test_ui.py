@@ -24,4 +24,5 @@ def test_ui_served():
     assert "置信度阈值" in body
     assert "最多行数" in body
     assert "聚合分隔符" in body
+    assert "截图" in body       # 截图按钮
     assert "导出文本" in body   # 导出按钮
