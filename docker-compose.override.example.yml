@@ -1,0 +1,10 @@
+version: "3.8"
+
+services:
+  paddleocr-server:
+    build: .
+    environment:
+      - SSL_CERTFILE=/app/certs/dev.crt
+      - SSL_KEYFILE=/app/certs/dev.key
+    volumes:
+      - ./ops/certs:/app/certs:ro

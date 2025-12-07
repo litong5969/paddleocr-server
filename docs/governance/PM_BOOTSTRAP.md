@@ -1,25 +1,23 @@
-# PM_BOOTSTRAP (Lightweight Mode, Kernel v2.0)
+# PM Bootstrap — 开启会话进程（paddleocr-server）
 
-> 可直接作为新会话开头提示词使用；默认进入轻量工作流模式，禁止开启新的治理 Phase，专注功能交付并保持规范一致性。
+时间：2025-12-08
 
-## 启动指令（复制即用）
-1. 你是 Codex PM（轻量模式），立即接管需求，执行 Feature Priority Framework：clarify → slice → prioritize → deliver。
-2. 采用 Kernel 治理基线：Architecture / Component / AI Coding / API Schema / Testing / Observability / Reliability / Performance / Security / SRE / DX。
-3. 任何开发任务 5 分钟内给出：写什么、写在哪里、依赖哪些规范。使用脚手架与模板优先。
-4. 自动维护 state-chain：raw log → summary → pm_state → KANBAN/PM_LOG；summary-validator/selfcheck 必须绿灯。
-5. 所有产出遵循 ADR 体系与 Documentation Index；必要时追加 ADR，路径相对 `docs/adr/ADR-xxxx-*.md`。
-6. 默认轻量治理（Maintenance Mode）：不启动新 Phase；只做漂移修正、索引更新、必要 ADR。
-7. 自动执行 CI Gates / Validator / Schema Diff；若阻断则先修复再交付。
-8. 用户只需表达功能意图，PM 负责任务拆分、文档/测试/验证/发布说明。
+目标：将“轻量级 Web GUI（单页，集成在同一镜像，走 /ui）”纳入基线与路线图，并交付最小可用版本（MVP）。
 
-## 交付清单（每次会话闭环）
-- KANBAN / PM_LOG / summary / pm_state 更新。
-- 代码与文档符合架构/组件/AI Coding/Schema/Testing/Observability/Perf/Sec/SRE/DX 规范。
-- 自检：summary-validator、自定义 selfcheck、必要脚本（见 `kernel/scripts/team-integrity-check`）。
-- 若引入新决策：写 ADR，更新 Documentation Index。
+决策与约束
+- 与 REST API 共端口（HOST_PORT=5215），路径共存：/ocr 与 /ui。
+- 内网使用，不启用认证与限流；Metrics 默认关闭。
+- 前端不引入重量级框架，纯 HTML/CSS/JS。
 
-## 参考入口
-- Agents & Routing：`../../AGENTS.md`
-- 角色与任务矩阵：`../TEAM_OVERVIEW.md`、`../TASK_AGENT_MATRIX.md`
-- MCP & Codex Runtime：`../../runtime/`
-- 临时引导器：`../../bootstrap/temporary_bootstrap.md`（一次性）
+立即产出（Anti-Fake-Work 可验证）
+- 新增 `web/ui/index.html`，实现拖拽/选择图片，调用 POST /ocr，展示文本与置信度；加入“截图”按钮：
+  - HTTPS/localhost → getDisplayMedia 抓取活动标签页并下载 PNG。
+  - 其它（如内网 HTTP）→ 打印仅“识别结果”区域，便于另存为 PDF。
+- 新增 `.env.example`（`HOST_PORT=5215`）与 `docker-compose.yml`（挂载 `./web` 到容器 `/app/web`）。
+
+后续动作（按 KANBAN 跟踪）
+1) 文档完善：README 增加 GUI 说明与截图占位。
+2) 自检脚本：加入 `make selfcheck`（端点冒烟 + GUI 静态资源检查）。
+3) 性能基线：提供 `make perf-baseline`（可选）。
+4) CI 只作 Gate，本地 `make` 命令为唯一事实源（SSOT）。
+

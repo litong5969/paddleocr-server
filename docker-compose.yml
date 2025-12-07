@@ -1,26 +1,16 @@
-version: "3.9"
+version: "3.8"
 
 services:
   paddleocr-server:
-    build:
-      context: .
-      args:
-        PADDLE_IMAGE_TAG: ${PADDLE_IMAGE_TAG:-3.2.2-gpu-cuda12.6-cudnn9.5}
-    image: paddleocr-server:local
-    env_file:
-      - ${ENV_FILE:-.env}
+    image: ghcr.io/litong5969/paddleocr-server:latest
+    container_name: paddleocr-server
+    environment:
+      - TZ=Asia/Shanghai
+      - METRICS_ENABLED=false
     ports:
       - "${HOST_PORT:-5215}:5000"
     volumes:
-      - ${PADDLEOCR_HOME:-./.paddleocr}:/root/.paddleocr
+      # 挂载本地 Web GUI（只读），便于热更新
+      - ./web:/app/web:ro
     restart: unless-stopped
-    environment:
-      - NVIDIA_VISIBLE_DEVICES=all
-      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: ["gpu"]
+

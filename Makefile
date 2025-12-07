@@ -1,12 +1,14 @@
-SHELL := /bin/bash
+.PHONY: up down logs selfcheck
 
-.PHONY: test selfcheck perf-baseline
+up:
+	docker compose --compatibility up -d --build
 
-test:
-	./scripts/dev/run_tests.sh
+down:
+	docker compose down
+
+logs:
+	docker compose logs -f --tail=200
 
 selfcheck:
-	./scripts/dev/selfcheck.sh
+	bash scripts/dev/selfcheck.sh
 
-perf-baseline:
-	./scripts/dev/perf_baseline.sh

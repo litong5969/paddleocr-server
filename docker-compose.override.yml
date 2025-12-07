@@ -1,0 +1,4 @@
+services:
+  paddleocr-server:
+    volumes:
+      - ./web:/app/web

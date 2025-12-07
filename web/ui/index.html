@@ -3,329 +3,359 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>PaddleOCR Server — Web UI</title>
+  <title>PaddleOCR Server · 轻量 GUI</title>
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, 'Noto Sans SC', sans-serif; margin: 24px; color: #222; }
-    h1 { font-size: 20px; margin: 0 0 12px; }
-    .bar { display: flex; gap: 12px; align-items: center; margin-bottom: 12px; }
-    .dropzone { border: 2px dashed #9aa0a6; border-radius: 8px; padding: 24px; text-align: center; color: #5f6368; }
-    .dropzone.drag { border-color: #1a73e8; color: #1a73e8; background: #e8f0fe; }
-    .hidden { display: none; }
-    .btn { display: inline-block; padding: 8px 12px; border-radius: 6px; background: #1a73e8; color: #fff; text-decoration: none; border: 0; cursor: pointer; }
-    .btn.secondary { background: #5f6368; }
-    .meta { font-size: 12px; color: #666; margin-top: 8px; }
-    pre { white-space: pre-wrap; background: #f5f5f5; padding: 12px; border-radius: 6px; }
-    table { border-collapse: collapse; width: 100%; margin-top: 8px; }
-    th, td { border: 1px solid #e0e0e0; padding: 6px 8px; text-align: left; font-size: 13px; }
-    .status { font-size: 12px; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif; margin: 0; padding: 16px; color: #222; }
+    header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+    h1 { font-size: 18px; margin: 0; }
+    .tools { display: flex; gap: 8px; flex-wrap: wrap; }
+    button, .btn { cursor: pointer; padding: 6px 10px; border-radius: 6px; border: 1px solid #ddd; background: #fff; }
+    button:hover { background: #f5f5f5; }
+    #status { margin-top: 6px; font-size: 12px; color: #666; white-space: pre-wrap; }
+    .main { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .pane { border: 1px solid #eee; border-radius: 8px; padding: 12px; background: #fff; }
+    .drop { border: 2px dashed #bbb; border-radius: 8px; padding: 16px; text-align: center; color: #666; }
+    .drop.dragover { border-color: #409eff; color: #409eff; }
+    textarea { width: 100%; height: 260px; resize: vertical; }
+    .muted { color: #999; font-size: 12px; }
+    .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .row input[type="file"] { display: inline-block; }
+    #results pre { white-space: pre-wrap; word-break: break-word; }
+    @media print { body * { visibility: hidden !important; } #results, #results * { visibility: visible !important; } #results { position: absolute; left: 0; top: 0; width: 100%; } }
+    /* 截图选择遮罩 */
+    .shot-overlay { position: fixed; inset: 0; z-index: 9999; cursor: crosshair; background: rgba(0,0,0,0.15); }
+    .shot-box { position: absolute; border: 2px solid #409eff; background: rgba(64,158,255,0.15); box-shadow: 0 0 0 9999px rgba(0,0,0,0.25); }
+    .shot-toolbar { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); display: flex; gap: 8px; }
+    .shot-toolbar button { background: #fff; border: 1px solid #ddd; border-radius: 6px; padding: 6px 10px; }
+    /* 全屏捕获预览 */
+    #capture-overlay { position: fixed; inset:0; z-index: 10000; background: rgba(0,0,0,0.6); display:none; }
+    #shot-preview { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); background:#111; padding: 8px; border-radius: 8px; }
+    #shot-video { max-width: 80vw; max-height: 70vh; background: #000; }
   </style>
 </head>
 <body>
-  <h1>OCR 体验（PaddleOCR Server）</h1>
-  <div class="bar">
-    <input id="file" type="file" accept="image/*" multiple />
-    <button id="run" class="btn">识别</button>
-    <button id="copy" class="btn secondary">复制文本</button>
-    <button id="export" class="btn secondary">导出文本</button>
-    <button id="shot" class="btn secondary">截图</button>
-    <a class="btn secondary" href="/docs" target="_blank">API 文档</a>
+  <header>
+    <h1>OCR 轻量 GUI</h1>
+    <div class="tools">
+      <button id="shot" title="截图本页或导出结果区 PNG">截图</button>
+      <button id="clear" title="清空输出">清空</button>
+    </div>
+  </header>
+  <div id="status" class="muted">就绪</div>
+
+  <section class="main">
+    <div class="pane">
+      <div class="row" style="margin-bottom:8px;">
+        <input id="file" type="file" accept="image/*" multiple />
+        <span class="muted">支持拖拽或选择图片，调用 POST /ocr</span>
+      </div>
+      <div id="drop" class="drop">拖拽图片到此处</div>
+    </div>
+    <div id="results" class="pane">
+      <div class="row" style="justify-content: space-between; margin-bottom: 6px;">
+        <strong>识别结果</strong>
+        <button id="copy">复制文本</button>
+      </div>
+      <pre id="out"></pre>
+    </div>
+  </section>
+  <!-- 截图选择层（默认隐藏） -->
+  <div id="shot-overlay" class="shot-overlay" style="display:none;">
+    <div id="shot-box" class="shot-box" style="display:none;"></div>
+    <div class="shot-toolbar">
+      <button id="shot-save" type="button">保存</button>
+      <button id="shot-cancel" type="button">取消</button>
+    </div>
   </div>
-  <div id="drop" class="dropzone">拖拽图片到此处（可多张），或点击上方选择文件</div>
-  <div id="state" class="status"></div>
-  <div id="prefs" class="meta" style="margin:8px 0;">
-    <label>调用模式
-      <select id="mode">
-        <option value="auto">自动选择</option>
-        <option value="single">单图 /ocr</option>
-        <option value="batch">批量 /ocr/batch</option>
-      </select>
-    </label>
-    <label style="margin-left:12px;">置信度阈值
-      <input id="thr" type="number" min="0" max="1" step="0.01" value="0" style="width:72px;" />
-    </label>
-    <label style="margin-left:12px;">最多行数
-      <input id="maxLines" type="number" min="0" step="1" value="0" style="width:72px;" />
-    </label>
-    <label style="margin-left:12px;">聚合分隔符
-      <select id="joiner">
-        <option value="\n">换行</option>
-        <option value=" ">空格</option>
-      </select>
-    </label>
-  </div>
-  <div id="metaBox" class="meta hidden"></div>
-  <div id="result" class="hidden">
-    <h2>识别结果</h2>
-    <pre id="text"></pre>
-    <div id="results"></div>
-  </div>
-  <div id="historyBox" class="hidden">
-    <h2>历史记录</h2>
-    <div class="meta">仅保留最近 5 次（本地浏览器存储）</div>
-    <div id="history"></div>
-    <button id="clearHistory" class="btn secondary">清空历史</button>
+  
+  <!-- 全屏捕获预览（确认后直接送入 OCR） -->
+  <div id="capture-overlay">
+    <div id="shot-preview">
+      <video id="shot-video" autoplay playsinline></video>
+      <div class="shot-toolbar" style="position: static; margin-top: 8px; transform:none; justify-content:center;">
+        <button id="shot-confirm" type="button">确认识别</button>
+        <button id="shot-cancel2" type="button">取消</button>
+      </div>
+      <div class="muted" style="margin-top:4px; color:#ccc; font-size:12px;">提示：在弹出的浏览器选择对话框中选择“整个屏幕”。</div>
+    </div>
   </div>
 
   <script>
-    const $ = (s) => document.querySelector(s);
-    const fileInput = $('#file');
-    const drop = $('#drop');
-    const runBtn = $('#run');
-    const copyBtn = $('#copy');
-    const state = $('#state');
-    const result = $('#result');
-    const text = $('#text');
-    const results = $('#results');
-    const historyBox = $('#historyBox');
-    const historyDiv = $('#history');
-    const clearHistoryBtn = $('#clearHistory');
-    const metaBox = $('#metaBox');
-    const modeSel = $('#mode');
-    const thrInput = $('#thr');
-    const maxLinesInput = $('#maxLines');
-    const joinerSel = $('#joiner');
+    // 轻量工具：选择器与状态显示
+    const $ = (s, el = document) => el.querySelector(s);
+    const setState = (msg, ok = true) => { const el = $('#status'); if (!el) return; el.textContent = msg; el.style.color = ok ? '#0a0' : '#c00'; };
+    const outEl = $('#out');
+    function appendLine(text) { outEl.textContent += (text + '\n'); }
+    function clearOut() { outEl.textContent = ''; }
 
-    let currentFiles = [];
+    // 上传处理
+    const apiBase = (location.origin || '')
+    const OCR_URL = apiBase + '/ocr';
+    async function callOCR(file) {
+      const form = new FormData(); form.append('file', file);
+      const t0 = performance.now();
+      const res = await fetch(OCR_URL, { method: 'POST', body: form });
+      const t1 = performance.now();
+      if (!res.ok) { throw new Error('HTTP ' + res.status + ' ' + (await res.text()).slice(0,256)); }
+      const data = await res.json(); const ms = Math.round(t1 - t0); return { data, ms };
+    }
+    async function handleFiles(files) {
+      if (!files || !files.length) return; setState('识别中…共 ' + files.length + ' 个文件', true);
+      for (const f of files) {
+        try {
+          const { data, ms } = await callOCR(f);
+          appendLine('[' + f.name + '] (' + ms + 'ms)');
+          if (Array.isArray(data?.results)) {
+            for (const item of data.results) {
+              const txt = item?.text ?? ''; const conf = item?.score ?? item?.confidence ?? '';
+              appendLine(' - ' + txt + (conf !== '' ? '  (score=' + conf + ')' : ''));
+            }
+          } else { appendLine(JSON.stringify(data)); }
+        } catch (e) { appendLine('错误: ' + (e && e.message ? e.message : e)); setState('识别失败：' + (e && e.message ? e.message : e), false); }
+      }
+      setState('完成', true);
+    }
 
-    const setState = (msg, ok=true) => {
-      state.textContent = msg;
-      state.style.color = ok ? '#188038' : '#d93025';
-    };
+    // 拖拽与选择
+    const fileEl = $('#file'); const drop = $('#drop');
+    fileEl.addEventListener('change', e => handleFiles(e.target.files));
+    ;['dragenter','dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('dragover'); }));
+    ;['dragleave','drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('dragover'); }));
+    drop.addEventListener('drop', e => handleFiles(e.dataTransfer.files));
 
-    const handleFiles = (files) => {
-      if (!files || files.length === 0) return;
-      const arr = Array.from(files).filter(f => f.type && f.type.startsWith('image/'));
-      if (arr.length === 0) { setState('请选择图片文件（image/*）', false); return; }
-      currentFiles = arr;
-      const totalKB = Math.round(arr.reduce((s,f)=>s+f.size,0)/1024);
-      setState(`已选择：${arr.length} 张图片（${totalKB} KB）`);
-    };
+    // 复制
+    $('#copy').addEventListener('click', async () => {
+      try { await navigator.clipboard.writeText(outEl.textContent || ''); setState('已复制到剪贴板', true); }
+      catch(e) { setState('复制失败：' + (e && e.message ? e.message : e), false); }
+    });
 
-    fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
-    ;['dragenter','dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('drag'); }));
-    ;['dragleave','drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('drag'); }));
-    drop.addEventListener('drop', (e) => handleFiles(e.dataTransfer.files));
+    // 清空
+    $('#clear').addEventListener('click', () => { clearOut(); setState('已清空', true); });
 
-    const saveHistory = (record) => {
-      try {
-        const key = 'ocr_history';
-        const list = JSON.parse(localStorage.getItem(key) || '[]');
-        list.unshift(record);
-        while (list.length > 5) list.pop();
-        localStorage.setItem(key, JSON.stringify(list));
-        renderHistory();
-      } catch {}
-    };
+    // --- 截图逻辑 ---
+    // 外部依赖为 0；在非安全上下文 HTTP 下 → 导出 #results 为 PNG；在 HTTPS/localhost → 屏幕捕获整页 PNG
+    function downloadBlob(blob, filename) {
+      const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = filename;
+      document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 0);
+    }
 
-    const renderHistory = () => {
-      try {
-        const key = 'ocr_history';
-        const list = JSON.parse(localStorage.getItem(key) || '[]');
-        historyDiv.innerHTML = '';
-        if (list.length === 0) { historyBox.classList.add('hidden'); return; }
-        list.forEach((rec, idx) => {
-          const div = document.createElement('div');
-          div.className = 'meta';
-          const when = new Date(rec.ts).toLocaleString();
-          const files = (rec.files || []).join(', ');
-          div.innerHTML = `#${idx+1} · ${when} · ${files} · 文本 ${rec.textLen} 字`;
-          div.style.cursor = 'pointer';
-          div.onclick = () => {
-            text.textContent = rec.text || '';
-            results.innerHTML = rec.html || '';
-            result.classList.remove('hidden');
-            setState('已加载历史记录');
+    function toDataURL(svgText) { return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgText); }
+
+    // 将页面（body）渲染为 Canvas（使用 foreignObject），返回 Promise<HTMLCanvasElement>
+    function renderPageToCanvas() {
+      return new Promise((resolve, reject) => {
+        try {
+          const dpr = window.devicePixelRatio || 1;
+          const w = Math.max(document.documentElement.scrollWidth, document.body.scrollWidth, window.innerWidth);
+          const h = Math.max(document.documentElement.scrollHeight, document.body.scrollHeight, window.innerHeight);
+          const styles = Array.from(document.querySelectorAll('style')).map(s => s.outerHTML).join('');
+          const html = `${styles}${document.body.outerHTML}`;
+          const svg = `<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"${w*dpr}\" height=\"${h*dpr}\" viewBox=\"0 0 ${w} ${h}\">`+
+                      `<foreignObject width=\"100%\" height=\"100%\"><div xmlns=\"http://www.w3.org/1999/xhtml\">${html}</div></foreignObject></svg>`;
+          const img = new Image();
+          img.onload = () => {
+            try {
+              const canvas = document.createElement('canvas');
+              canvas.width = Math.ceil(w*dpr); canvas.height = Math.ceil(h*dpr);
+              const ctx = canvas.getContext('2d');
+              ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+              ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+              resolve(canvas);
+            } catch (e) { reject(e); }
           };
-          historyDiv.appendChild(div);
-        });
-        historyBox.classList.remove('hidden');
-      } catch {}
-    };
-
-    clearHistoryBtn.addEventListener('click', () => {
-      localStorage.removeItem('ocr_history');
-      renderHistory();
-    });
-
-    copyBtn.addEventListener('click', async () => {
-      try {
-        await navigator.clipboard.writeText(text.textContent || '');
-        setState('已复制到剪贴板');
-      } catch (e) {
-        setState('复制失败：' + e, false);
-      }
-    });
-
-    const download = (filename, content) => {
-      const blob = new Blob([content], {type: 'text/plain;charset=utf-8'});
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 0);
-    };
-
-    $('#export').addEventListener('click', () => {
-      const t = (text.textContent || '').trim();
-      if (!t) { setState('无可导出的文本', false); return; }
-      const name = currentFiles && currentFiles.length>0 ? `ocr_${Date.now()}.txt` : `ocr.txt`;
-      download(name, t + '\n');
-      setState('已导出文本');
-    });
-
-    const readPrefs = () => ({
-      mode: modeSel.value || 'auto',
-      thr: Math.max(0, Math.min(1, parseFloat(thrInput.value || '0') || 0)),
-      maxLines: Math.max(0, parseInt(maxLinesInput.value || '0')),
-      joiner: joinerSel.value || '\n',
-    });
-
-    const applyPrefs = (lines, prefs) => {
-      const filtered = (lines || []).filter(r => (r.score || 0) >= prefs.thr);
-      const limited = (prefs.maxLines > 0) ? filtered.slice(0, prefs.maxLines) : filtered;
-      return limited;
-    };
-
-    // persist prefs
-    [modeSel, thrInput, maxLinesInput, joinerSel].forEach(el => {
-      el.addEventListener('change', () => {
-        const p = readPrefs();
-        localStorage.setItem('ocr_gui_prefs', JSON.stringify(p));
+          img.onerror = () => reject(new Error('SVG 渲染失败'));
+          img.src = toDataURL(svg);
+        } catch (e) { reject(e); }
       });
-    });
-    try {
-      const p = JSON.parse(localStorage.getItem('ocr_gui_prefs') || '{}');
-      if (p.mode) modeSel.value = p.mode;
-      if (typeof p.thr === 'number') thrInput.value = p.thr;
-      if (typeof p.maxLines === 'number') maxLinesInput.value = p.maxLines;
-      if (p.joiner) joinerSel.value = p.joiner;
-    } catch {}
+    }
 
-    runBtn.addEventListener('click', async () => {
-      if (!currentFiles || currentFiles.length === 0) { setState('请先选择图片', false); return; }
+    // 截图选择遮罩交互
+    const overlay = document.getElementById('shot-overlay');
+    const box = document.getElementById('shot-box');
+    const btnSave = document.getElementById('shot-save');
+    const btnCancel = document.getElementById('shot-cancel');
+    let startX = 0, startY = 0, endX = 0, endY = 0, dragging = false;
+
+    function openShotOverlay() {
+      overlay.style.display = 'block';
+      box.style.display = 'none';
+      dragging = false;
+      setState('请拖拽选择截图区域（ESC 取消，回车保存）', true);
+    }
+    function closeShotOverlay() {
+      overlay.style.display = 'none';
+      box.style.display = 'none';
+      dragging = false;
+    }
+    function normRect(a, b, c, d) {
+      const x = Math.min(a,c), y = Math.min(b,d);
+      return { x, y, w: Math.abs(a-c), h: Math.abs(b-d) };
+    }
+    function updateBox() {
+      const r = normRect(startX, startY, endX, endY);
+      if (r.w < 3 || r.h < 3) { box.style.display = 'none'; return; }
+      box.style.display = 'block';
+      box.style.left = r.x + 'px';
+      box.style.top = r.y + 'px';
+      box.style.width = r.w + 'px';
+      box.style.height = r.h + 'px';
+    }
+    overlay.addEventListener('mousedown', (e) => { dragging = true; startX = endX = e.clientX; startY = endY = e.clientY; updateBox(); });
+    overlay.addEventListener('mousemove', (e) => { if (!dragging) return; endX = e.clientX; endY = e.clientY; updateBox(); });
+    overlay.addEventListener('mouseup',   (e) => { dragging = false; endX = e.clientX; endY = e.clientY; updateBox(); });
+    overlay.addEventListener('mouseleave',(e) => { if (!dragging) return; dragging = false; updateBox(); });
+    document.addEventListener('keydown', (e) => {
+      if (overlay.style.display !== 'block') return;
+      if (e.key === 'Escape') { e.preventDefault(); closeShotOverlay(); }
+      if (e.key === 'Enter')  { e.preventDefault(); btnSave.click(); }
+    });
+    btnCancel.addEventListener('click', closeShotOverlay);
+    btnSave.addEventListener('click', async () => {
+      const r = normRect(startX, startY, endX, endY);
+      if (r.w < 3 || r.h < 3) { setState('请选择有效的截图区域', false); return; }
       try {
-        const prefs = readPrefs();
-        setState('识别中…');
-        results.innerHTML = '';
-        text.textContent = '';
-        let aggregatedText = '';
-        let htmlOut = '';
-        let resp, data;
-        const forceSingle = prefs.mode === 'single';
-        const forceBatch = prefs.mode === 'batch';
-        if ((currentFiles.length === 1 && !forceBatch) || forceSingle) {
-          const fd = new FormData();
-          fd.append('file', currentFiles[0]);
-          resp = await fetch('/ocr', { method: 'POST', body: fd });
-          if (!resp.ok) throw new Error(`请求失败：${resp.status} ${await resp.text()}`);
-          data = await resp.json();
-          const applied = applyPrefs(data.lines || [], prefs);
-          aggregatedText = applied.map(x => x.text || '').join(prefs.joiner);
-          const tbl = document.createElement('table');
-          tbl.innerHTML = '<thead><tr><th>#</th><th>文本</th><th>置信度</th></tr></thead><tbody></tbody>';
-          const tb = tbl.querySelector('tbody');
-          applied.forEach((row, i) => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `<td>${i+1}</td><td>${row.text || ''}</td><td>${(row.score||0).toFixed(3)}</td>`;
-            tb.appendChild(tr);
-          });
-          results.appendChild(tbl);
-          htmlOut = results.innerHTML;
-        } else {
-          const fd = new FormData();
-          currentFiles.forEach(f => fd.append('files', f));
-          resp = await fetch('/ocr/batch', { method: 'POST', body: fd });
-          if (!resp.ok) throw new Error(`请求失败：${resp.status} ${await resp.text()}`);
-          data = await resp.json();
-          (data.results || []).forEach((item, idx) => {
-            const h3 = document.createElement('h3');
-            h3.textContent = `${idx+1}. ${item.filename}`;
-            results.appendChild(h3);
-            const pre = document.createElement('pre');
-            const applied = applyPrefs(item.lines || [], prefs);
-            pre.textContent = applied.map(x => x.text || '').join(prefs.joiner);
-            results.appendChild(pre);
-            const tbl = document.createElement('table');
-            tbl.innerHTML = '<thead><tr><th>#</th><th>文本</th><th>置信度</th></tr></thead><tbody></tbody>';
-            const tb = tbl.querySelector('tbody');
-            applied.forEach((row, i) => {
-              const tr = document.createElement('tr');
-              tr.innerHTML = `<td>${i+1}</td><td>${row.text || ''}</td><td>${(row.score||0).toFixed(3)}</td>`;
-              tb.appendChild(tr);
-            });
-            results.appendChild(tbl);
-            aggregatedText += pre.textContent + '\n\n';
-          });
-          htmlOut = results.innerHTML;
-        }
-        text.textContent = aggregatedText.trim();
-        result.classList.remove('hidden');
-        const ms = resp.headers.get('X-Process-Time-ms') || '-';
-        setState(`完成（服务耗时 ${ms} ms）`);
-        // 保存历史
-        saveHistory({ ts: Date.now(), files: currentFiles.map(f=>f.name), text: text.textContent, textLen: (text.textContent||'').length, html: htmlOut });
-      } catch (err) {
-        setState(String(err), false);
+        setState('生成截图中…', true);
+        const canvas = await renderPageToCanvas();
+        const dpr = window.devicePixelRatio || 1;
+        const cropX = Math.round((r.x + window.scrollX) * dpr);
+        const cropY = Math.round((r.y + window.scrollY) * dpr);
+        const cropW = Math.round(r.w * dpr);
+        const cropH = Math.round(r.h * dpr);
+        const out = document.createElement('canvas');
+        out.width = cropW; out.height = cropH;
+        const ctx = out.getContext('2d');
+        ctx.drawImage(canvas, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
+        const blob = await new Promise(res => out.toBlob(res, 'image/png'));
+        const ts = new Date().toISOString().replace(/[:.]/g,'-'); const filename = `ocr-shot-${ts}.png`;
+        downloadBlob(blob, filename);
+        setState('已保存截图：' + filename, true);
+      } catch (e) { console.error(e); setState('截图失败：' + (e && e.message ? e.message : e), false); }
+      closeShotOverlay();
+    });
+
+    async function captureResultsAsPNG() {
+      const el = $('#results'); if (!el) { setState('未找到结果区域', false); return; }
+      const width = Math.ceil(el.offsetWidth || 600);
+      const height = Math.ceil(el.scrollHeight || el.offsetHeight || 400);
+      const cloned = el.cloneNode(true);
+      // 基础内联样式，避免外部样式丢失
+      cloned.style.margin = '0'; cloned.style.padding = '12px'; cloned.style.background = '#ffffff'; cloned.style.color = '#222';
+      const style = `<style>*{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,'Noto Sans','PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif;} pre{white-space:pre-wrap;word-break:break-word;}</style>`;
+      const wrapper = document.createElement('div'); wrapper.appendChild(cloned);
+      const html = style + wrapper.innerHTML;
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">`+
+                  `<foreignObject width="100%" height="100%"><div xmlns="http://www.w3.org/1999/xhtml">${html}</div></foreignObject></svg>`;
+      const img = new Image();
+      const dataURL = toDataURL(svg);
+      const blob = await new Promise((resolve, reject) => {
+        img.onload = () => {
+          try {
+            const canvas = document.createElement('canvas'); canvas.width = width; canvas.height = height;
+            const ctx = canvas.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0,0,width,height); ctx.drawImage(img, 0, 0);
+            canvas.toBlob((b) => b ? resolve(b) : reject(new Error('toBlob 失败')), 'image/png');
+          } catch (e) { reject(e); }
+        };
+        img.onerror = () => reject(new Error('SVG 渲染失败'));
+        img.src = dataURL;
+      });
+      const ts = new Date().toISOString().replace(/[:.]/g,'-'); const filename = `ocr-results-${ts}.png`;
+      downloadBlob(blob, filename); setState(`已保存结果区域截图：${filename}`, true);
+    }
+
+    function triggerPrintResults() { setState('已打开打印对话框（可另存为 PDF）', true); window.print(); }
+
+    async function captureActiveTabIfAllowed() {
+      const host = location.hostname || '';
+      const isSecure = window.isSecureContext || host === 'localhost' || host === '127.0.0.1';
+      if (!isSecure) { // 内网 HTTP：直接导出结果区域 PNG（无权限）
+        try { await captureResultsAsPNG(); } catch(e) { console.error(e); setState('导出 PNG 失败，改为打印', false); triggerPrintResults(); }
+        return;
       }
-    });
-
-    const loadMeta = async () => {
-      try {
-        const [m, r] = await Promise.all([
-          fetch('/meta').then(x=>x.json()),
-          fetch('/readyz').then(x=>x.json()).catch(()=>({ready:false}))
-        ]);
-        const ready = r && (r.ready === true);
-        metaBox.innerHTML = `服务信息：lang=${m.lang} · version=${m.version} · GPU=${m.use_gpu_requested} · cache=${m.paddleocr_home || ''} · metrics=${m.metrics_enabled} · ready=${ready}`;
-        metaBox.classList.remove('hidden');
-      } catch {}
-    };
-
-    renderHistory();
-    loadMeta();
-  </script>
-</body>
-</html>
-    const shotBtn = $('#shot');
-    const downloadBlob = (blob, filename) => {
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 0);
-    };
-
-    // 截图：使用浏览器屏幕捕获（需用户授权），选中“此标签页”后生成图片
-    shotBtn.addEventListener('click', async () => {
       if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
-        setState('此浏览器不支持屏幕捕获，请使用系统截图', false);
+        try { await captureResultsAsPNG(); } catch(e) { console.error(e); setState('不支持屏幕捕获，改为打印', false); triggerPrintResults(); }
         return;
       }
       try {
-        const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+        const stream = await navigator.mediaDevices.getDisplayMedia({ video: { displaySurface: 'browser' }, audio: false });
         const track = stream.getVideoTracks()[0];
-        // 使用 <video> 绘制当前帧到 canvas 以导出 PNG
-        const v = document.createElement('video');
-        v.srcObject = stream;
-        await v.play();
-        // 等待元数据以获取分辨率
-        await new Promise(r => v.onloadedmetadata = r);
-        const cw = v.videoWidth, ch = v.videoHeight;
-        const canvas = document.createElement('canvas');
-        canvas.width = cw; canvas.height = ch;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(v, 0, 0, cw, ch);
-        // 结束捕获
-        track.stop();
-        v.pause();
+        const video = document.createElement('video'); video.srcObject = stream; await video.play();
+        const canvas = document.createElement('canvas'); canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+        const ctx = canvas.getContext('2d'); ctx.drawImage(video, 0, 0); track.stop();
         const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
-        downloadBlob(blob, `paddleocr-ui-${Date.now()}.png`);
-        setState('已保存截图到下载');
-      } catch (e) {
-        setState('截图取消或失败：' + (e && e.message ? e.message : e), false);
+        if (!blob) throw new Error('toBlob 失败');
+        const ts = new Date().toISOString().replace(/[:.]/g,'-'); const filename = `ocr-ui-${ts}.png`;
+        downloadBlob(blob, filename); setState('已保存整页截图：' + filename, true);
+      } catch (e) { console.error(e); setState('屏幕捕获失败，尝试只导出结果区域', false); try { await captureResultsAsPNG(); } catch(e2) { console.error(e2); triggerPrintResults(); } }
+    }
+
+    // ---- 全屏捕获并直接送 OCR ----
+    const capOverlay = document.getElementById('capture-overlay');
+    const capVideo = document.getElementById('shot-video');
+    const capConfirm = document.getElementById('shot-confirm');
+    const capCancel = document.getElementById('shot-cancel2');
+    let capStream = null;
+
+    async function startFullScreenCapture() {
+      // HTTPS/localhost 更稳定；在 HTTP 下仍尝试，失败再提示
+      const host = location.hostname || '';
+      const isSecure = window.isSecureContext || host === 'localhost' || host === '127.0.0.1';
+      if (!isSecure) {
+        setState('提示：在非 HTTPS/localhost 环境尝试启动屏幕捕获，可能被浏览器拒绝。', false);
       }
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+        setState('此浏览器不支持屏幕捕获 API', false);
+        return;
+      }
+      try {
+        capStream = await navigator.mediaDevices.getDisplayMedia({ video: { displaySurface: 'monitor' }, audio: false });
+        capVideo.srcObject = capStream;
+        capOverlay.style.display = 'block';
+        await capVideo.play();
+        setState('已开始屏幕预览，点击“确认识别”抓取当前帧', true);
+      } catch (e) {
+        console.error(e); setState('未授权或启动屏幕捕获失败', false);
+      }
+    }
+
+    function stopCapture() {
+      try { if (capStream) { capStream.getTracks().forEach(t => t.stop()); } } catch (e) {}
+      capStream = null; capVideo.srcObject = null; capOverlay.style.display = 'none';
+    }
+
+    async function confirmAndOcrCurrentFrame() {
+      if (!capStream) { setState('没有可用的屏幕流', false); return; }
+      try {
+        const track = capStream.getVideoTracks()[0];
+        let blob;
+        if (window.ImageCapture) {
+          const ic = new ImageCapture(track);
+          const bitmap = await ic.grabFrame();
+          const canvas = document.createElement('canvas'); canvas.width = bitmap.width; canvas.height = bitmap.height;
+          const ctx = canvas.getContext('2d'); ctx.drawImage(bitmap, 0, 0);
+          blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
+        } else {
+          const canvas = document.createElement('canvas'); canvas.width = capVideo.videoWidth; canvas.height = capVideo.videoHeight;
+          const ctx = canvas.getContext('2d'); ctx.drawImage(capVideo, 0, 0);
+          blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
+        }
+        if (!blob) throw new Error('抓帧失败');
+        // 直接送入 OCR
+        const file = new File([blob], 'screencap.png', { type: 'image/png' });
+        setState('正在识别屏幕截图…', true);
+        await handleFiles([file]);
+      } catch (e) {
+        console.error(e); setState('截图或识别失败：' + (e && e.message ? e.message : e), false);
+      } finally {
+        stopCapture();
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const shotBtn = $('#shot');
+      if (shotBtn) { shotBtn.addEventListener('click', (e) => { e.preventDefault(); startFullScreenCapture(); }); }
+      capCancel.addEventListener('click', (e) => { e.preventDefault(); stopCapture(); });
+      capConfirm.addEventListener('click', (e) => { e.preventDefault(); confirmAndOcrCurrentFrame(); });
     });
+  </script>
+</body>
+</html>

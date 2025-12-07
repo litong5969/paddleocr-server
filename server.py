@@ -424,4 +424,9 @@ except Exception:
 if __name__ == "__main__":
     host = os.getenv("APP_HOST", "0.0.0.0")
     port = int(os.getenv("APP_PORT", "5000"))
-    uvicorn.run(app, host=host, port=port)
+    ssl_cert = os.getenv("SSL_CERTFILE")
+    ssl_key = os.getenv("SSL_KEYFILE")
+    kwargs = {"host": host, "port": port}
+    if ssl_cert and ssl_key and os.path.exists(ssl_cert) and os.path.exists(ssl_key):
+        kwargs.update({"ssl_certfile": ssl_cert, "ssl_keyfile": ssl_key})
+    uvicorn.run(app, **kwargs)
