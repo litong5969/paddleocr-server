@@ -9,7 +9,7 @@ app = FastAPI()
 ocr = PaddleOCR(
     lang='ch',
     use_angle_cls=True,
-    ocr_version='PP-OCRv5'
+    ocr_version='PP-OCRv4'
 )
 
 @app.post("/ocr")
