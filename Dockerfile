@@ -4,7 +4,7 @@ WORKDIR /app
 
 RUN apt update && apt install -y \
     python3-pip python3-dev \
-    libglib2.0-0 libsm6 libxrender1 libxext6 \
+    libglib2.0-0 libsm6 libxrender1 libxext6 libgl1 \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
