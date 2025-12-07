@@ -66,3 +66,10 @@
 - 2025-12-08: CI 冒烟：新增 `.github/workflows/ci-smoke.yml`，包含：
   - unit：最小依赖（不安装 PaddleOCR）运行 pytest 覆盖 UI/API 关键路径（FakeOCR）。
   - python-smoke：最小依赖启动 uvicorn 服务，检查 `/healthz` 与 `/ui`；`/readyz` 非致命。
+
+- 2025-12-08: 本地 Gates（SSOT）落地：
+  - Make 入口：`make selfcheck` / `make test` / `make perf-baseline`。
+  - 脚本：`scripts/dev/selfcheck.sh`（结构/冒烟/容器内测试）、`scripts/dev/perf_baseline.sh`（写入 `docs/summary/bench-<date>.md`）。
+  - SOP：`docs/sop/LOCAL_GATES.md`，明确“CI Gate 仅保护，事实源为本地命令”。
+
+- 2025-12-08: GUI 截图：已将 `http://192.168.31.3:5215/ui/` 的界面实拍保存至 `docs/summary/ui-screenshot.png`，README 已更新标注为“实拍”。

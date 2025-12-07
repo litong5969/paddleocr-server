@@ -29,3 +29,4 @@
  - [x] GUI-003：元信息面板（/meta + /readyz）显示服务语言/版本/GPU/缓存/metrics/就绪状态
  - [x] PROXY-001：路径路由配置示例（K8s Ingress 与 Nginx），同端口同服务，避免跨域
  - [x] CI-001：GitHub Actions 轻量冒烟（pytest + Python 启动服务，验证 /healthz 与 /ui）
+ - [x] GATES-001：本地 Gate（make selfcheck/test/perf-baseline）与 SOP 文档

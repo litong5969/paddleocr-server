@@ -45,7 +45,7 @@
   - 历史记录（最近 5 次，存储于本地浏览器，可清空）
 - 定位：单页原生 HTML/JS，不引入重量前端框架，不增加镜像体积
 - 示例：浏览器打开 `http://localhost:${HOST_PORT:-5215}/` 即可使用
-- 截图：docs/summary/ui-screenshot.png（默认占位，运行脚本可生成真实截图）
+- 截图：docs/summary/ui-screenshot.png（实拍）
 - 请求（表单上传）：
   ```bash
   curl -X POST http://localhost:5215/ocr \
@@ -92,6 +92,11 @@
   ```bash
   ./scripts/dev/run_tests.sh
   ```
+
+## 本地 Gate（SSOT）
+- 自检：`make selfcheck`（结构/文档/端点冒烟/容器内测试）
+- 测试：`make test`
+- 性能基线：`make perf-baseline`（结果写入 `docs/summary/bench-<date>.md`）
 
 ## Kubernetes 部署
 - Kustomize（CPU 默认）：
