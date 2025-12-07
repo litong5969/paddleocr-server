@@ -74,3 +74,5 @@
 
 - 2025-12-08: GUI 截图：已将 `http://192.168.31.3:5215/ui/` 的界面实拍保存至 `docs/summary/ui-screenshot.png`，README 已更新标注为“实拍”。
 - 2025-12-08: Bench 概览：补充 `docs/summary/bench-2025-12-08.md` 顶部小结（并发 1/4/8 的 ok/err 与分位数），便于后续横向对比。
+ 
+ - 2025-12-08: v0.2.0 会话收尾：发布 Release，更新 CHANGELOG/README/KANBAN/ROADMAP，并归档 closeout 文档 `docs/summary/pm_sessions/closeout-2025-12-08.md`。
